@@ -1,0 +1,6 @@
+1. a2.
+2. location 0x26. These functions were inlined.
+3. 630.
+4. 0x0.
+5. He110 World. 0x726c6400. No
+6. Unexpected value because it less arguments required
