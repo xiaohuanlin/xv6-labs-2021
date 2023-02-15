@@ -29,6 +29,17 @@ trapinithart(void)
   w_stvec((uint64)kernelvec);
 }
 
+uint64
+push_to_stack(uint64 sp, uint64 addr)
+{
+  struct proc *p = myproc();
+  sp -= sizeof(uint64);
+  // sp -= sp % 16;
+  if (copyout(p->pagetable, sp, (char *)&addr, sizeof(uint64)) < 0)
+    panic("stack size is not enough");
+  return sp;
+}
+
 //
 // handle an interrupt, exception, or system call from user space.
 // called from trampoline.S
@@ -67,6 +78,56 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
+    if (which_dev == 2) {
+      // time interrupt
+      p->current_ticks += 1;
+      if (p->executing == 0 && p->target_ticks != 0 && p->current_ticks == p->target_ticks) {
+        p->executing = 1;
+        p->current_ticks = 0;
+        uint64 old_epc = p->trapframe->epc;
+        uint64 sp = p->trapframe->sp;
+
+        // store register
+        sp = push_to_stack(sp, p->trapframe->ra);
+        sp = push_to_stack(sp, p->trapframe->sp);
+        sp = push_to_stack(sp, p->trapframe->gp);
+        sp = push_to_stack(sp, p->trapframe->tp);
+        sp = push_to_stack(sp, p->trapframe->t0);
+        sp = push_to_stack(sp, p->trapframe->t1);
+        sp = push_to_stack(sp, p->trapframe->t2);
+        sp = push_to_stack(sp, p->trapframe->s0);
+        sp = push_to_stack(sp, p->trapframe->s1);
+        sp = push_to_stack(sp, p->trapframe->a0);
+        sp = push_to_stack(sp, p->trapframe->a1);
+        sp = push_to_stack(sp, p->trapframe->a2);
+        sp = push_to_stack(sp, p->trapframe->a3);
+        sp = push_to_stack(sp, p->trapframe->a4);
+        sp = push_to_stack(sp, p->trapframe->a5);
+        sp = push_to_stack(sp, p->trapframe->a6);
+        sp = push_to_stack(sp, p->trapframe->a7);
+        sp = push_to_stack(sp, p->trapframe->s2);
+        sp = push_to_stack(sp, p->trapframe->s3);
+        sp = push_to_stack(sp, p->trapframe->s4);
+        sp = push_to_stack(sp, p->trapframe->s5);
+        sp = push_to_stack(sp, p->trapframe->s6);
+        sp = push_to_stack(sp, p->trapframe->s7);
+        sp = push_to_stack(sp, p->trapframe->s8);
+        sp = push_to_stack(sp, p->trapframe->s9);
+        sp = push_to_stack(sp, p->trapframe->s10);
+        sp = push_to_stack(sp, p->trapframe->s11);
+        sp = push_to_stack(sp, p->trapframe->t3);
+        sp = push_to_stack(sp, p->trapframe->t4);
+        sp = push_to_stack(sp, p->trapframe->t5);
+        sp = push_to_stack(sp, p->trapframe->t6);
+
+        // push return address
+        sp = push_to_stack(sp, old_epc);
+
+        p->trapframe->sp = sp;
+        p->trapframe->epc = p->handler;
+        usertrapret();
+      }
+    }
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());

@@ -140,6 +140,9 @@ found:
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
+  p->current_ticks = 0;
+  p->target_ticks = 0;
+  p->handler = 0;
 
   return p;
 }
