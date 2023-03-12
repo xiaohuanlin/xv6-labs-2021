@@ -23,11 +23,16 @@ struct {
   struct run *freelist;
 } kmem;
 
+
+uint8 page_counts[1 << 20];
+struct spinlock page_lock;
+
 void
 kinit()
 {
   initlock(&kmem.lock, "kmem");
   freerange(end, (void*)PHYSTOP);
+  memset(page_counts, 0, sizeof(page_counts));
 }
 
 void
@@ -50,6 +55,10 @@ kfree(void *pa)
 
   if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
     panic("kfree");
+  
+  if (krmref(pa) > 0) {
+    return;
+  }
 
   // Fill with junk to catch dangling refs.
   memset(pa, 1, PGSIZE);
@@ -76,7 +85,29 @@ kalloc(void)
     kmem.freelist = r->next;
   release(&kmem.lock);
 
+  kaddref((void *)r);
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
+}
+
+void
+kaddref(void* pa)
+{
+  acquire(&page_lock);
+  uint64 loc = (uint64)pa >> PGSHIFT;
+  page_counts[loc] += 1;
+  release(&page_lock);
+}
+
+int
+krmref(void* pa)
+{
+  acquire(&page_lock);
+  uint64 loc = (uint64)pa >> PGSHIFT;
+  if (page_counts[loc] != 0) {
+    page_counts[loc] -= 1;
+  }
+  release(&page_lock);
+  return page_counts[loc];
 }
