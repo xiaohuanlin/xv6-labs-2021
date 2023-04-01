@@ -1,0 +1,8 @@
+race condition. There will cover each other.
+1                   2
+lookup      
+                    lookup
+create entry
+                    create entry
+become the first one
+                    become the first one
